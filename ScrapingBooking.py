@@ -10,12 +10,6 @@ from selenium.webdriver.common.action_chains import ActionChains
 import pandas as pd
 
 
-# On vient initialiser le driver
-driver = webdriver.Chrome()
-driver.maximize_window()
-
-actions = ActionChains(driver)
-
 def scrapeData(lien, ville, nbrHotelARecup, nbrCommentairesMaxParHotel):
     # On vient initialiser la liste de résultat
     data = []
@@ -29,12 +23,6 @@ def scrapeData(lien, ville, nbrHotelARecup, nbrCommentairesMaxParHotel):
     except:
         print("Il n'y avait pas de cookies à accepter")
         pass
-
-    # On vient chercher la barre de recherche des villes et rentrer la ville dans laquelle on veut récupérer les infos des hotels
-    elem = driver.find_element(By.NAME, "ss")
-    elem.clear()
-    elem.send_keys(ville)
-    elem.send_keys(Keys.RETURN)
 
     # On vient fermer la popup qui demande de rentrer des dates précises
     x = 5
@@ -84,54 +72,46 @@ def scrapeData(lien, ville, nbrHotelARecup, nbrCommentairesMaxParHotel):
         hotelName = WebDriverWait(driver, 20).until(EC.visibility_of_element_located((By.XPATH, "//h2[@class='d2fee87262 pp-header__title']"))).text
 
         # On clique sur "voir tous les commentaires" s'il y en a un
-        #try:
-        WebDriverWait(driver, 5).until(EC.visibility_of_element_located((By.XPATH, "//button[@data-testid='read-all-actionable']"))).click()
+        try:
+            WebDriverWait(driver, 5).until(EC.visibility_of_element_located((By.XPATH, "//button[@data-testid='read-all-actionable']"))).click()
 
-        # Intégrer la pagination pour récupérer tous les commentaires de toutes les pages
-        #nbrPagesPagination = driver.find_elements(By.XPATH, "//div[@class='bui-pagination__item ']")
-        #driver.find_elements(By.XPATH, "//div[@class='bui-pagination__item ']//a[@class='bui-pagination__link']") #.get_attribute("data-page-number")
-        #print(nbrPagesPagination)
+            for index in range(int(nbrCommentairesMaxParHotel/10)):
+                # On vérifie que l'élément contenant les commentaires sont bien visibles
+                WebDriverWait(driver, 5).until(EC.visibility_of_element_located((By.XPATH, "//ul[@class='review_list']//li[@class='review_list_new_item_block']")))
 
-        for index in range(int(nbrCommentairesMaxParHotel/10)):
-            # On vérifie que l'élément contenant les commentaires sont bien visibles
-            WebDriverWait(driver, 5).until(EC.visibility_of_element_located((By.XPATH, "//ul[@class='review_list']//li[@class='review_list_new_item_block']")))
+                # On récupère la liste des conteneurs des commentaires
+                listeCommentaires = driver.find_elements(By.XPATH, "//ul[@class='review_list']//li[@class='review_list_new_item_block']")
 
-            # On récupère la liste des conteneurs des commentaires
-            listeCommentaires = driver.find_elements(By.XPATH, "//ul[@class='review_list']//li[@class='review_list_new_item_block']")
-
-            for idx, commentaire in enumerate(listeCommentaires):
-                try:
-                    print(idx, commentaire.find_element(By.XPATH, ".//span[@class='bui-avatar-block__title']").text)
-                    # Récupérer le nom
-                    auteur = commentaire.find_element(By.XPATH, ".//span[@class='bui-avatar-block__title']").text
-                    # Récupérer la date
-                    date = commentaire.find_element(By.XPATH, ".//span[@class='c-review-block__date']").text
-                    note = commentaire.find_element(By.XPATH, ".//div[@class='bui-review-score__badge']").text
-                    # Récupérer le titre du commentaire
-                    titre = commentaire.find_elements(By.XPATH, ".//h3")[0].text
-                    # Récupérer la partie positive du commentaire
+                for idx, commentaire in enumerate(listeCommentaires):
                     try:
-                        commentairePositif = commentaire.find_elements(By.XPATH, ".//p[@class='c-review__inner c-review__inner--ltr']")[0].text
-                    except:
-                        commentairePositif = ""
-                    # Récupérer la partie négative du commentaire
-                    try:
-                        commentaireNegatif = commentaire.find_elements(By.XPATH, ".//p[@class='c-review__inner c-review__inner--ltr']")[1].text
-                    except:
-                        commentaireNegatif = ""
+                        print(idx, commentaire.find_element(By.XPATH, ".//span[@class='bui-avatar-block__title']").text)
+                        # Récupérer le nom
+                        auteur = commentaire.find_element(By.XPATH, ".//span[@class='bui-avatar-block__title']").text
+                        # Récupérer la date
+                        date = commentaire.find_element(By.XPATH, ".//span[@class='c-review-block__date']").text
+                        note = commentaire.find_element(By.XPATH, ".//div[@class='bui-review-score__badge']").text
+                        # Récupérer le titre du commentaire
+                        titre = commentaire.find_elements(By.XPATH, ".//h3")[0].text
+                        # Récupérer la partie positive du commentaire
+                        try:
+                            commentairePositif = commentaire.find_elements(By.XPATH, ".//p[@class='c-review__inner c-review__inner--ltr']")[0].text
+                        except:
+                            commentairePositif = ""
+                        # Récupérer la partie négative du commentaire
+                        try:
+                            commentaireNegatif = commentaire.find_elements(By.XPATH, ".//p[@class='c-review__inner c-review__inner--ltr']")[1].text
+                        except:
+                            commentaireNegatif = ""
 
-                    # On vient ajouter le commentaire dans la liste contenant les résultats
-                    data.append([hotelName, auteur, date, note, titre, commentairePositif, commentaireNegatif])
-                except:
-                    pass
+                        # On vient ajouter le commentaire dans la liste contenant les résultats
+                        data.append([ville, hotelName, auteur, date, note, titre, commentairePositif, commentaireNegatif])
+                    except:
+                        pass
 
-            #try:
-            driver.find_element(By.XPATH, "//a[@class='pagenext']").click()
-            #except:
-            #    break
-        #except:
-        #    print("Aucun commentaire présent")
-        #    pass
+                driver.find_element(By.XPATH, "//a[@class='pagenext']").click()
+        except:
+            print("Aucun commentaire présent")
+            pass
 
         # On ferme l'onglet sur lequel on est actuellement
         driver.close()
@@ -147,18 +127,34 @@ def scrapeData(lien, ville, nbrHotelARecup, nbrCommentairesMaxParHotel):
 
     return data
 
-lien = "https://www.booking.com/"
-ville = "Paris"
-nbrHotelARecup = 10
-nbrCommentairesMaxParHotel = 100
-chemin_excel = "C:\\Users\\jeanv\\Desktop\\Cours\\Dev applis\\python\\Scraping Booking\\commentaires.xlsx"
+baseURL = "https://www.booking.com/"
+nbrHotelARecup = 2
+nbrCommentairesMaxParHotel = 20
+chemin_excel = "C:\\Users\\jeanv\\Desktop\\Cours\\Dev applis\\python\\ScrapingBooking\\commentaires.xlsx"
+villes = ["Strasbourg", "Paris"]
 
-data  = scrapeData(lien, ville, nbrHotelARecup, nbrCommentairesMaxParHotel)
+data = []
+for ville in villes:
+    lien = baseURL + f"searchresults.fr.html?ss={ville}"
+    print(lien)
 
-print(data)
+    # On vient initialiser le driver
+    driver = webdriver.Chrome()
+    driver.maximize_window()
+    driver.delete_all_cookies()
 
-df = pd.DataFrame(data, columns=["Hotel", "AuteurCommentaire", "DateCommentaire", "Note", "TitreCommentaire", "CommentairePositif", "CommentaireNégatif"])
+    actions = ActionChains(driver)
 
-print(df.head())
+    data.append(scrapeData(lien, ville, nbrHotelARecup, nbrCommentairesMaxParHotel))
 
-df.to_excel(chemin_excel, index=False)
+    driver.quit()
+
+# Optimiser cette partie car si on met plus ou moins que 2 villes dans la liste villes, le script plantera
+df = pd.DataFrame(data[0], columns=["Ville", "Hotel", "AuteurCommentaire", "DateCommentaire", "Note", "TitreCommentaire", "CommentairePositif", "CommentaireNégatif"])
+df2 = pd.DataFrame(data[1], columns=["Ville", "Hotel", "AuteurCommentaire", "DateCommentaire", "Note", "TitreCommentaire", "CommentairePositif", "CommentaireNégatif"])
+
+FinalDF = pd.concat([df, df2], ignore_index=True)
+
+print(FinalDF.head())
+
+FinalDF.to_excel(chemin_excel, index=False)
